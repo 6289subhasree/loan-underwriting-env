@@ -40,35 +40,35 @@ class LoanUnderwritingEnv:
         if difficulty == "easy":
             return Applicant(
                 applicant_id=f"APP_{random.randint(1000,9999)}",
-                age=35,
-                annual_income=95000.0,
-                credit_score=780,
-                debt_to_income_ratio=0.18,
-                employment_years=8.0,
-                loan_amount_requested=20000.0,
-                loan_purpose="home_improvement"
+                age=random.randint(30, 50),
+                annual_income=random.uniform(80000, 150000),
+                credit_score=random.randint(740, 850),
+                debt_to_income_ratio=round(random.uniform(0.10, 0.25), 2),
+                employment_years=round(random.uniform(5.0, 20.0), 1),
+                loan_amount_requested=random.uniform(10000, 30000),
+                loan_purpose=random.choice(["home_improvement", "car", "education"])
             )
         elif difficulty == "medium":
             return Applicant(
                 applicant_id=f"APP_{random.randint(1000,9999)}",
-                age=28,
-                annual_income=48000.0,
-                credit_score=640,
-                debt_to_income_ratio=0.38,
-                employment_years=2.5,
-                loan_amount_requested=35000.0,
-                loan_purpose="debt_consolidation"
+                age=random.randint(24, 35),
+                annual_income=random.uniform(35000, 60000),
+                credit_score=random.randint(600, 680),
+                debt_to_income_ratio=round(random.uniform(0.30, 0.45), 2),
+                employment_years=round(random.uniform(1.0, 4.0), 1),
+                loan_amount_requested=random.uniform(25000, 45000),
+                loan_purpose=random.choice(["debt_consolidation", "medical", "home_improvement"])
             )
         else:
             return Applicant(
                 applicant_id=f"APP_{random.randint(1000,9999)}",
-                age=24,
-                annual_income=32000.0,
-                credit_score=590,
-                debt_to_income_ratio=0.51,
-                employment_years=0.8,
-                loan_amount_requested=50000.0,
-                loan_purpose="business"
+                age=random.randint(20, 28),
+                annual_income=random.uniform(20000, 38000),
+                credit_score=random.randint(500, 620),
+                debt_to_income_ratio=round(random.uniform(0.45, 0.65), 2),
+                employment_years=round(random.uniform(0.2, 1.5), 1),
+                loan_amount_requested=random.uniform(40000, 70000),
+                loan_purpose=random.choice(["business", "crypto", "gambling_debt"])
             )
 
     def reset(self, task_id: str = "task_easy") -> Observation:
@@ -101,7 +101,7 @@ class LoanUnderwritingEnv:
             "current_task": self.current_task,
             "done": self.done,
             "steps": self.steps,
-            "applicant": self.current_applicant.dict() if self.current_applicant else None
+            "applicant": self.current_applicant.model_dump() if self.current_applicant else None
         }
 
     def _grade(self, action: Action) -> Reward:

@@ -3,6 +3,7 @@ import json
 from openai import OpenAI
 from dotenv import load_dotenv
 from environment import LoanUnderwritingEnv, Action
+SPACE_URL = "https://subhasreeee-loan-underwriting-env.hf.space"
 
 load_dotenv()
 
