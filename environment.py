@@ -1,6 +1,6 @@
 import random
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 class Applicant(BaseModel):
     applicant_id: str
@@ -35,6 +35,10 @@ class LoanUnderwritingEnv:
         self.done = False
         self.steps = 0
         self.max_steps = 3
+        self.batch_applicants = []
+        self.batch_index = 0
+        self.capital_pool = 0.0
+        self.batch_actions = []
 
     def _generate_applicant(self, difficulty: str) -> Applicant:
         if difficulty == "easy":
@@ -75,6 +79,24 @@ class LoanUnderwritingEnv:
         self.done = False
         self.steps = 0
         self.current_task = task_id
+        self.batch_actions = []
+        self.batch_index = 0
+
+        if task_id == "task_batch":
+            self.batch_applicants = [
+                self._generate_applicant("easy"),
+                self._generate_applicant("medium"),
+                self._generate_applicant("hard")
+            ]
+            self.capital_pool = 100000.0
+            self.current_applicant = self.batch_applicants[0]
+            return Observation(
+                applicant=self.current_applicant,
+                task_id=task_id,
+                difficulty="hard",
+                message="You have $100,000 capital pool. Evaluate 3 applicants and optimize approvals while managing portfolio risk. Current applicant 1 of 3."
+            )
+
         difficulty = task_id.replace("task_", "")
         self.current_applicant = self._generate_applicant(difficulty)
         return Observation(
@@ -86,6 +108,31 @@ class LoanUnderwritingEnv:
 
     def step(self, action: Action) -> tuple:
         self.steps += 1
+
+        if self.current_task == "task_batch":
+            self.batch_actions.append(action)
+            self.batch_index += 1
+
+            if self.batch_index < len(self.batch_applicants):
+                self.current_applicant = self.batch_applicants[self.batch_index]
+                obs = Observation(
+                    applicant=self.current_applicant,
+                    task_id=self.current_task,
+                    difficulty="hard",
+                    message=f"Applicant {self.batch_index + 1} of 3. Capital remaining: ${self.capital_pool:,.2f}"
+                )
+                return obs, Reward(score=0.0, feedback="Intermediate step"), False, {"steps": self.steps}
+            else:
+                reward = self._grade_batch()
+                self.done = True
+                obs = Observation(
+                    applicant=self.current_applicant,
+                    task_id=self.current_task,
+                    difficulty="hard",
+                    message="Batch evaluation complete."
+                )
+                return obs, reward, self.done, {"steps": self.steps}
+
         reward = self._grade(action)
         self.done = True
         obs = Observation(
@@ -101,14 +148,63 @@ class LoanUnderwritingEnv:
             "current_task": self.current_task,
             "done": self.done,
             "steps": self.steps,
+            "batch_index": self.batch_index,
+            "capital_pool": self.capital_pool,
             "applicant": self.current_applicant.model_dump() if self.current_applicant else None
         }
+
+    def _grade_batch(self) -> Reward:
+        score = 0.0
+        feedback = []
+        total_approved = 0.0
+        risky_approvals = 0
+        good_decisions = 0
+
+        for i, (applicant, action) in enumerate(zip(self.batch_applicants, self.batch_actions)):
+            difficulty = ["easy", "medium", "hard"][i]
+
+            if difficulty == "easy" and action.decision == "approve":
+                good_decisions += 1
+                total_approved += action.approved_amount
+            elif difficulty == "medium" and action.decision in ["approve", "counter_offer"]:
+                good_decisions += 1
+                total_approved += action.approved_amount
+            elif difficulty == "hard" and action.decision == "reject":
+                good_decisions += 1
+            elif difficulty == "hard" and action.decision == "approve":
+                risky_approvals += 1
+                total_approved += action.approved_amount
+
+            if applicant.loan_purpose in ["crypto", "gambling_debt"] and action.decision == "approve":
+                risky_approvals += 1
+                feedback.append(f"Penalized: approved predatory loan purpose ({applicant.loan_purpose})")
+
+        decision_score = good_decisions / 3
+        score += decision_score * 0.5
+        feedback.append(f"Good decisions: {good_decisions}/3")
+
+        if total_approved <= 100000.0:
+            score += 0.3
+            feedback.append("Capital pool managed within limits.")
+        else:
+            feedback.append("Capital pool exceeded — over-approved.")
+
+        if risky_approvals == 0:
+            score += 0.2
+            feedback.append("No predatory or risky approvals — excellent risk management.")
+        else:
+            feedback.append(f"Risky approvals detected: {risky_approvals}")
+
+        return Reward(score=min(score, 1.0), feedback=" | ".join(feedback))
 
     def _grade(self, action: Action) -> Reward:
         score = 0.0
         feedback = []
         applicant = self.current_applicant
         difficulty = self.current_task.replace("task_", "")
+
+        if applicant.loan_purpose in ["crypto", "gambling_debt"] and action.decision == "approve":
+            return Reward(score=0.0, feedback="Penalized: approved predatory loan purpose.")
 
         if difficulty == "easy":
             if action.decision == "approve":
