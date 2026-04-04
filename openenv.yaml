@@ -1,25 +1,30 @@
 name: loan-underwriting-env
 version: "1.0.0"
-description: "A reinforcement learning environment where an AI agent acts as a loan underwriting officer, evaluating applicant profiles and making approve/reject/counter-offer decisions."
-author: "your-huggingface-username"
+description: "A reinforcement learning environment where an AI agent acts as a loan underwriting officer, evaluating applicant profiles and making approve/reject/counter-offer decisions with real financial constraints."
+author: "subhasreeee"
 tags:
   - openenv
   - fintech
   - loan-underwriting
   - reinforcement-learning
+  - risk-management
 
 tasks:
   - id: task_easy
     difficulty: easy
-    description: "Clear-cut applicant with strong financials. Agent must approve with appropriate interest rate."
+    description: "Clear-cut applicant with strong financials (credit > 740, DTI < 0.25). Agent must approve with appropriate interest rate (5-8%)."
 
   - id: task_medium
     difficulty: medium
-    description: "Borderline applicant with mixed signals. Agent must weigh DTI ratio, credit score and employment history."
+    description: "Borderline applicant with mixed signals (credit 600-680, DTI 0.30-0.45). Agent must weigh risk and counter-offer with reduced amount."
 
   - id: task_hard
     difficulty: hard
-    description: "High-risk applicant with poor financials. Agent must reject or counter-offer with strong reasoning."
+    description: "High-risk applicant (credit < 620, DTI > 0.45). Agent must reject or counter-offer with strong reasoning. Penalized for approving predatory loan purposes."
+
+  - id: task_batch
+    difficulty: hard
+    description: "Portfolio management task — evaluate 3 applicants (easy/medium/hard) with a $100,000 capital pool. Maximize good approvals while keeping portfolio risk low. Penalized for predatory approvals and capital overrun."
 
 observation_space:
   type: object
@@ -44,4 +49,11 @@ action_space:
 reward:
   range: [0.0, 1.0]
   type: continuous
-  description: "Partial credit scoring based on decision correctness, interest rate appropriateness, and reasoning quality."
+  description: "Partial credit scoring based on decision correctness, interest rate appropriateness, reasoning quality, capital management, and predatory lending penalties."
+
+baseline_scores:
+  task_easy: 1.0
+  task_medium: 1.0
+  task_hard: 1.0
+  task_batch: 1.0
+  average: 1.0
