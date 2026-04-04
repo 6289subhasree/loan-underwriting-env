@@ -1,0 +1,47 @@
+name: loan-underwriting-env
+version: "1.0.0"
+description: "A reinforcement learning environment where an AI agent acts as a loan underwriting officer, evaluating applicant profiles and making approve/reject/counter-offer decisions."
+author: "your-huggingface-username"
+tags:
+  - openenv
+  - fintech
+  - loan-underwriting
+  - reinforcement-learning
+
+tasks:
+  - id: task_easy
+    difficulty: easy
+    description: "Clear-cut applicant with strong financials. Agent must approve with appropriate interest rate."
+
+  - id: task_medium
+    difficulty: medium
+    description: "Borderline applicant with mixed signals. Agent must weigh DTI ratio, credit score and employment history."
+
+  - id: task_hard
+    difficulty: hard
+    description: "High-risk applicant with poor financials. Agent must reject or counter-offer with strong reasoning."
+
+observation_space:
+  type: object
+  fields:
+    - applicant_id: string
+    - age: integer
+    - annual_income: float
+    - credit_score: integer
+    - debt_to_income_ratio: float
+    - employment_years: float
+    - loan_amount_requested: float
+    - loan_purpose: string
+
+action_space:
+  type: object
+  fields:
+    - decision: "approve | reject | counter_offer"
+    - approved_amount: float
+    - interest_rate: float
+    - reason: string
+
+reward:
+  range: [0.0, 1.0]
+  type: continuous
+  description: "Partial credit scoring based on decision correctness, interest rate appropriateness, and reasoning quality."
