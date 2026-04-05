@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loan Underwriting Environment</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --gold-dim: #8a6f2e;
+    --charcoal: #1c1c1e;
+    --charcoal-2: #242426;
+    --charcoal-3: #2e2e30;
+    --charcoal-4: #3a3a3c;
+    --white: #f5f5f0;
+    --gray: #b0b0b0;
+    --gray-dim: #777;
+    --green: #4caf7d;
+    --red: #e05c5c;
+    --amber: #e8a838;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--charcoal);
+    color: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background:
+      radial-gradient(ellipse at 10% 20%, rgba(201,168,76,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 90% 80%, rgba(201,168,76,0.04) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .noise {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 20px 40px;
+    border-bottom: 1px solid rgba(201,168,76,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    backdrop-filter: blur(10px);
+    background: rgba(28,28,30,0.8);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .logo-icon {
+    width: 40px;
+    height: 40px;
+    border: 1.5px solid var(--gold);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    color: var(--gold);
+  }
+
+  .logo-text {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    color: var(--white);
+    letter-spacing: 0.02em;
+  }
+
+  .logo-text span { color: var(--gold); }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .status-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .status-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--gray);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .task-selector {
+    display: flex;
+    gap: 10px;
+    padding: 16px 40px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    position: relative;
+    z-index: 10;
+    background: rgba(28,28,30,0.5);
+  }
+
+  .task-btn {
+    padding: 10px 22px;
+    border-radius: 6px;
+    border: 1px solid rgba(201,168,76,0.2);
+    background: transparent;
+    color: var(--gray);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+
+  .task-btn:hover {
+    border-color: var(--gold-dim);
+    color: var(--gold-light);
+  }
+
+  .task-btn.active {
+    background: rgba(201,168,76,0.1);
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+
+  .task-btn.hard { border-color: rgba(224,92,92,0.3); }
+  .task-btn.hard.active {
+    background: rgba(224,92,92,0.1);
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    height: calc(100vh - 138px);
+    position: relative;
+    z-index: 10;
+  }
+
+  .divider {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom, transparent, rgba(201,168,76,0.3) 20%, rgba(201,168,76,0.3) 80%, transparent);
+  }
+
+  .panel {
+    padding: 36px 40px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--charcoal-4) transparent;
+  }
+
+  .panel-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--gold-dim);
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .panel-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(201,168,76,0.15);
+  }
+
+  .applicant-card {
+    background: var(--charcoal-2);
+    border: 1px solid rgba(201,168,76,0.12);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 20px;
+    animation: slideIn 0.4s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .applicant-id {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--gold-dim);
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+  }
+
+  .applicant-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 30px;
+    color: var(--white);
+    margin-bottom: 6px;
+  }
+
+  .applicant-purpose {
+    font-size: 15px;
+    color: var(--gray);
+    text-transform: capitalize;
+    margin-bottom: 28px;
+  }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .metric {
+    background: var(--charcoal-3);
+    border-radius: 10px;
+    padding: 16px 18px;
+    border: 1px solid rgba(255,255,255,0.04);
+    transition: border-color 0.2s;
+  }
+
+  .metric:hover { border-color: rgba(201,168,76,0.2); }
+
+  .metric-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--gray-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .metric-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 24px;
+    font-weight: 500;
+    color: var(--white);
+  }
+
+  .metric-value.good { color: var(--green); }
+  .metric-value.warn { color: var(--amber); }
+  .metric-value.bad { color: var(--red); }
+
+  .metric-sub {
+    font-size: 12px;
+    color: var(--gray-dim);
+    margin-top: 4px;
+  }
+
+  .risk-bar-container { margin-top: 24px; }
+
+  .risk-bar-label {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--gray);
+    margin-bottom: 8px;
+  }
+
+  .risk-bar-track {
+    height: 5px;
+    background: var(--charcoal-4);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .risk-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+    background: linear-gradient(to right, var(--green), var(--amber), var(--red));
+  }
+
+  .run-btn {
+    width: 100%;
+    padding: 18px;
+    border-radius: 10px;
+    border: 1px solid var(--gold);
+    background: rgba(201,168,76,0.08);
+    color: var(--gold);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 20px;
+  }
+
+  .run-btn:hover {
+    background: rgba(201,168,76,0.15);
+    box-shadow: 0 0 24px rgba(201,168,76,0.1);
+  }
+
+  .run-btn:active { transform: scale(0.99); }
+  .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .decision-card {
+    background: var(--charcoal-2);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 20px;
+    animation: slideIn 0.4s ease;
+  }
+
+  .decision-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  .badge-approve {
+    background: rgba(76,175,125,0.15);
+    border: 1px solid rgba(76,175,125,0.4);
+    color: var(--green);
+  }
+
+  .badge-reject {
+    background: rgba(224,92,92,0.15);
+    border: 1px solid rgba(224,92,92,0.4);
+    color: var(--red);
+  }
+
+  .badge-counter {
+    background: rgba(232,168,56,0.15);
+    border: 1px solid rgba(232,168,56,0.4);
+    color: var(--amber);
+  }
+
+  .decision-amount {
+    font-family: 'Playfair Display', serif;
+    font-size: 48px;
+    color: var(--white);
+    margin-bottom: 6px;
+  }
+
+  .decision-rate {
+    font-family: 'DM Mono', monospace;
+    font-size: 16px;
+    color: var(--gray);
+    margin-bottom: 20px;
+  }
+
+  .decision-reason {
+    font-size: 14px;
+    color: var(--gray);
+    line-height: 1.75;
+    padding: 16px 18px;
+    background: var(--charcoal-3);
+    border-radius: 8px;
+    border-left: 2px solid var(--gold-dim);
+  }
+
+  .score-card {
+    background: var(--charcoal-2);
+    border-radius: 16px;
+    padding: 28px;
+    border: 1px solid rgba(201,168,76,0.15);
+    animation: slideIn 0.5s ease;
+  }
+
+  .score-number {
+    font-family: 'Playfair Display', serif;
+    font-size: 72px;
+    color: var(--gold);
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .score-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--gray-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  .score-meter-track {
+    height: 6px;
+    background: var(--charcoal-4);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+
+  .score-meter-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(to right, var(--gold-dim), var(--gold), var(--gold-light));
+    transition: width 1s cubic-bezier(0.4,0,0.2,1);
+    width: 0%;
+  }
+
+  .feedback-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--gray);
+    line-height: 1.8;
+  }
+
+  .feedback-item {
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .feedback-item::before {
+    content: '▸';
+    color: var(--gold-dim);
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 60%;
+    gap: 16px;
+    color: var(--gray-dim);
+  }
+
+  .empty-icon {
+    font-size: 52px;
+    opacity: 0.3;
+    font-family: 'Playfair Display', serif;
+  }
+
+  .empty-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .loading-dots span {
+    animation: blink 1.2s infinite;
+    font-family: 'DM Mono', monospace;
+    color: var(--gold);
+    font-size: 20px;
+  }
+
+  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes blink {
+    0%, 80%, 100% { opacity: 0; }
+    40% { opacity: 1; }
+  }
+
+  .task-info {
+    background: var(--charcoal-3);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .task-info-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--gold-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .task-info-desc {
+    font-size: 14px;
+    color: var(--gray);
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<div class="noise"></div>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">£</div>
+    <div class="logo-text">Loan<span>Underwriter</span></div>
+  </div>
+  <div class="header-right">
+    <div class="status-dot"></div>
+    <div class="status-text">Environment Live</div>
+  </div>
+</header>
+
+<div class="task-selector">
+  <button class="task-btn active" onclick="selectTask('task_easy', this)">task_easy</button>
+  <button class="task-btn" onclick="selectTask('task_medium', this)">task_medium</button>
+  <button class="task-btn hard" onclick="selectTask('task_hard', this)">task_hard</button>
+  <button class="task-btn hard" onclick="selectTask('task_batch', this)">task_batch</button>
+</div>
+
+<div class="main">
+  <div class="divider"></div>
+
+  <div class="panel" id="left-panel">
+    <div class="panel-label">Applicant Profile</div>
+    <div id="applicant-area">
+      <div class="empty-state">
+        <div class="empty-icon">⬡</div>
+        <div class="empty-text">Select a task to begin</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="right-panel">
+    <div class="panel-label">Agent Decision</div>
+    <div id="decision-area">
+      <div class="empty-state">
+        <div class="empty-icon">⬡</div>
+        <div class="empty-text">Awaiting evaluation</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE = '';
+let currentTask = 'task_easy';
+
+const taskDescs = {
+  task_easy: 'Strong applicant profile. Agent should approve with interest rate 5–8%.',
+  task_medium: 'Borderline profile with mixed signals. Agent should counter-offer with reduced amount.',
+  task_hard: 'High-risk applicant. Agent should reject or counter-offer with strong reasoning.',
+  task_batch: 'Portfolio task — 3 applicants, $100k capital pool. Maximize approvals while managing risk.'
+};
+
+function selectTask(taskId, btn) {
+  currentTask = taskId;
+  document.querySelectorAll('.task-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  document.getElementById('applicant-area').innerHTML = `
+    <div class="task-info">
+      <div class="task-info-label">Task — ${taskId}</div>
+      <div class="task-info-desc">${taskDescs[taskId]}</div>
+    </div>
+    <button class="run-btn" onclick="runEvaluation()">▶ Run Evaluation</button>
+  `;
+
+  document.getElementById('decision-area').innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">⬡</div>
+      <div class="empty-text">Ready to evaluate</div>
+    </div>
+  `;
+}
+
+function getCreditClass(score) {
+  if (score >= 720) return 'good';
+  if (score >= 620) return 'warn';
+  return 'bad';
+}
+
+function getDTIClass(dti) {
+  if (dti <= 0.28) return 'good';
+  if (dti <= 0.43) return 'warn';
+  return 'bad';
+}
+
+function getDecisionClass(decision) {
+  if (decision === 'approve') return 'badge-approve';
+  if (decision === 'reject') return 'badge-reject';
+  return 'badge-counter';
+}
+
+function getDecisionLabel(decision) {
+  if (decision === 'approve') return '✓ Approved';
+  if (decision === 'reject') return '✕ Rejected';
+  return '⟳ Counter Offer';
+}
+
+function renderApplicant(applicant) {
+  return `
+    <div class="applicant-card">
+      <div class="applicant-id">${applicant.applicant_id}</div>
+      <div class="applicant-name">Applicant Profile</div>
+      <div class="applicant-purpose">${applicant.loan_purpose.replace(/_/g,' ')} loan</div>
+      <div class="metrics-grid">
+        <div class="metric">
+          <div class="metric-label">Credit Score</div>
+          <div class="metric-value ${getCreditClass(applicant.credit_score)}">${applicant.credit_score}</div>
+          <div class="metric-sub">${applicant.credit_score>=720?'Good standing':applicant.credit_score>=620?'Fair':'Poor'}</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Annual Income</div>
+          <div class="metric-value">$${(applicant.annual_income/1000).toFixed(0)}k</div>
+          <div class="metric-sub">per year</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">DTI Ratio</div>
+          <div class="metric-value ${getDTIClass(applicant.debt_to_income_ratio)}">${(applicant.debt_to_income_ratio*100).toFixed(0)}%</div>
+          <div class="metric-sub">${applicant.debt_to_income_ratio<=0.28?'Low risk':applicant.debt_to_income_ratio<=0.43?'Moderate':'High risk'}</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Employment</div>
+          <div class="metric-value">${applicant.employment_years}y</div>
+          <div class="metric-sub">work history</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Loan Request</div>
+          <div class="metric-value">$${(applicant.loan_amount_requested/1000).toFixed(0)}k</div>
+          <div class="metric-sub">requested</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Age</div>
+          <div class="metric-value">${applicant.age}</div>
+          <div class="metric-sub">years old</div>
+        </div>
+      </div>
+      <div class="risk-bar-container">
+        <div class="risk-bar-label">
+          <span>Risk Level</span>
+          <span>${applicant.debt_to_income_ratio<=0.28?'Low':applicant.debt_to_income_ratio<=0.43?'Moderate':'High'}</span>
+        </div>
+        <div class="risk-bar-track">
+          <div class="risk-bar-fill" style="width:${Math.min(applicant.debt_to_income_ratio*150,100)}%"></div>
+        </div>
+      </div>
+    </div>
+    <button class="run-btn" onclick="runEvaluation()">▶ Run Again</button>
+  `;
+}
+
+function renderDecision(action, reward) {
+  const feedbackItems = reward.feedback.split(' | ').map(f =>
+    `<div class="feedback-item">${f}</div>`
+  ).join('');
+
+  return `
+    <div class="decision-card">
+      <div class="decision-badge ${getDecisionClass(action.decision)}">${getDecisionLabel(action.decision)}</div>
+      <div class="decision-amount">$${action.approved_amount.toLocaleString('en-US',{maximumFractionDigits:0})}</div>
+      <div class="decision-rate">${action.interest_rate}% interest rate</div>
+      <div class="decision-reason">${action.reason}</div>
+    </div>
+    <div class="score-card">
+      <div class="score-number" id="score-num">0.00</div>
+      <div class="score-label">Grader Score</div>
+      <div class="score-meter-track">
+        <div class="score-meter-fill" id="score-fill"></div>
+      </div>
+      <div class="feedback-text">${feedbackItems}</div>
+    </div>
+  `;
+}
+
+function animateScore(target) {
+  const el = document.getElementById('score-num');
+  let current = 0;
+  const steps = 60;
+  const increment = target / steps;
+  const interval = setInterval(() => {
+    current += increment;
+    if (current >= target) { current = target; clearInterval(interval); }
+    el.textContent = current.toFixed(2);
+  }, 16);
+}
+
+async function runEvaluation() {
+  const btn = document.querySelector('.run-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="loading-dots"><span>●</span><span>●</span><span>●</span></span>'; }
+
+  document.getElementById('decision-area').innerHTML = `
+    <div class="empty-state">
+      <div class="loading-dots"><span>●</span><span>●</span><span>●</span></div>
+      <div class="empty-text" style="margin-top:12px">Agent evaluating...</div>
+    </div>
+  `;
+
+  try {
+    const resetRes = await fetch(`${BASE}/reset?task_id=${currentTask}`, { method: 'POST' });
+    const obs = await resetRes.json();
+    const applicant = obs.applicant;
+
+    if (currentTask !== 'task_batch') {
+      document.getElementById('applicant-area').innerHTML = renderApplicant(applicant);
+    } else {
+      document.getElementById('applicant-area').innerHTML = `
+        <div class="applicant-card">
+          <div class="applicant-id">PORTFOLIO EVALUATION</div>
+          <div class="applicant-name">Batch Task</div>
+          <div class="applicant-purpose">3 applicants · $100,000 capital pool</div>
+          <div class="metrics-grid">
+            <div class="metric">
+              <div class="metric-label">Applicants</div>
+              <div class="metric-value good">3</div>
+              <div class="metric-sub">easy · medium · hard</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Capital Pool</div>
+              <div class="metric-value">$100k</div>
+              <div class="metric-sub">total budget</div>
+            </div>
+          </div>
+        </div>
+        <button class="run-btn" onclick="runEvaluation()">▶ Run Again</button>
+      `;
+    }
+
+    const agentRes = await fetch(`${BASE}/agent-decision`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ applicant, message: obs.message, task_id: currentTask })
+    });
+
+    let action;
+    if (agentRes.ok) {
+      action = await agentRes.json();
+    } else {
+      action = {
+        decision: applicant.credit_score >= 720 ? 'approve' : applicant.credit_score >= 620 ? 'counter_offer' : 'reject',
+        approved_amount: applicant.credit_score >= 720 ? applicant.loan_amount_requested : applicant.loan_amount_requested * 0.75,
+        interest_rate: applicant.credit_score >= 720 ? 6.5 : applicant.credit_score >= 620 ? 11.5 : 0,
+        reason: 'Decision based on credit score and debt-to-income ratio analysis.'
+      };
+    }
+
+    const stepRes = await fetch(`${BASE}/step`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(action)
+    });
+    const result = await stepRes.json();
+    const reward = result.reward;
+
+    document.getElementById('decision-area').innerHTML = renderDecision(action, reward);
+
+    setTimeout(() => {
+      document.getElementById('score-fill').style.width = `${reward.score * 100}%`;
+      animateScore(reward.score);
+    }, 100);
+
+  } catch(e) {
+    document.getElementById('decision-area').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-text" style="color:#e05c5c">Error: ${e.message}</div>
+      </div>
+    `;
+  }
+}
+
+selectTask('task_easy', document.querySelector('.task-btn'));
+</script>
+</body>
+</html>
