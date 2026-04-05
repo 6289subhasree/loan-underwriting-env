@@ -1,0 +1,25 @@
+[project]
+name = "loan-underwriting-env"
+version = "1.0.0"
+description = "RL environment for AI loan underwriting agents"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "openai",
+    "python-dotenv",
+    "openenv-core>=0.2.0",
+]
+
+[project.scripts]
+server = "server.app:main"
+
+[project.urls]
+Homepage = "https://huggingface.co/spaces/subhasreeee/loan-underwriting-env"
+
+[tool.openenv]
+name = "loan-underwriting-env"
+version = "1.0.0"
+benchmark = "loan-underwriting"
+tasks = ["task_easy", "task_medium", "task_hard", "task_batch"]
