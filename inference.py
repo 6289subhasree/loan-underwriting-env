@@ -7,13 +7,28 @@ from environment import LoanUnderwritingEnv, Action
 
 load_dotenv()
 
-client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY"),
-    base_url=os.getenv("API_BASE_URL")
-)
-
-MODEL_NAME = os.getenv("MODEL_NAME")
+API_KEY = os.getenv("OPENAI_API_KEY") or os.getenv("HF_TOKEN")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://api.groq.com/openai/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "llama-3.3-70b-versatile")
+BENCHMARK = "loan-underwriting"
 TASKS = ["task_easy", "task_medium", "task_hard", "task_batch"]
+
+client = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
+
+
+def log_start(task: str, env: str, model: str):
+    print(f"[START] task={task} env={env} model={model}", flush=True)
+
+
+def log_step(step: int, action: str, reward: float, done: bool, error=None):
+    error_val = error if error else "null"
+    done_val = str(done).lower()
+    print(f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}", flush=True)
+
+
+def log_end(success: bool, steps: int, score: float, rewards: list):
+    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
+    print(f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}", flush=True)
 
 
 def get_decision(prompt: str) -> dict:
@@ -71,27 +86,51 @@ JSON only, no extra text."""
 def run_task(task_id: str) -> float:
     env = LoanUnderwritingEnv()
     obs = env.reset(task_id=task_id)
+    rewards = []
+    steps_taken = 0
+    score = 0.0
+    success = False
 
-    if task_id == "task_batch":
-        print(json.dumps({
-            "event": "START",
-            "task_id": task_id,
-            "message": "Batch evaluation — 3 applicants, $100k capital pool"
-        }))
+    log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
 
-        done = False
-        step_num = 0
-        final_score = 0.0
-        final_feedback = ""
+    try:
+        if task_id == "task_batch":
+            done = False
+            step_num = 0
+            final_score = 0.0
 
-        while not done:
-            prompt = build_prompt(
-                obs.applicant,
-                context=f"Context: {obs.message}\nOptimize approvals while managing portfolio risk within $100,000 capital pool."
-            )
+            while not done:
+                prompt = build_prompt(
+                    obs.applicant,
+                    context=f"Context: {obs.message}\nOptimize approvals while managing portfolio risk within $100,000 capital pool."
+                )
+                parsed = get_decision(prompt)
+                action = Action(
+                    decision=parsed.get("decision", "reject"),
+                    approved_amount=float(parsed.get("approved_amount", 0.0)),
+                    interest_rate=float(parsed.get("interest_rate", 0.0)),
+                    reason=parsed.get("reason", "")
+                )
 
+                obs, reward, done, info = env.step(action)
+                step_num += 1
+                steps_taken = step_num
+
+                step_reward = reward.score if done else 0.0
+                rewards.append(step_reward)
+
+                action_str = f"{action.decision}(amount={action.approved_amount:.0f},rate={action.interest_rate})"
+                log_step(step=step_num, action=action_str, reward=step_reward, done=done)
+
+                if done:
+                    final_score = reward.score
+                    score = final_score
+
+            success = score >= 0.5
+
+        else:
+            prompt = build_prompt(obs.applicant)
             parsed = get_decision(prompt)
-
             action = Action(
                 decision=parsed.get("decision", "reject"),
                 approved_amount=float(parsed.get("approved_amount", 0.0)),
@@ -99,78 +138,38 @@ def run_task(task_id: str) -> float:
                 reason=parsed.get("reason", "")
             )
 
-            print(json.dumps({
-                "event": "STEP",
-                "task_id": task_id,
-                "step": step_num + 1,
-                "action": action.model_dump()
-            }))
-
             obs, reward, done, info = env.step(action)
-            step_num += 1
+            steps_taken = 1
+            score = reward.score
+            rewards.append(score)
+            success = score >= 0.5
 
-            if done:
-                final_score = reward.score
-                final_feedback = reward.feedback
+            action_str = f"{action.decision}(amount={action.approved_amount:.0f},rate={action.interest_rate})"
+            log_step(step=1, action=action_str, reward=score, done=done)
 
-        print(json.dumps({
-            "event": "END",
-            "task_id": task_id,
-            "score": final_score,
-            "feedback": final_feedback
-        }))
+    except Exception as e:
+        print(f"ERROR: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        log_end(success=False, steps=steps_taken, score=0.0, rewards=rewards)
+        return 0.0
 
-        return final_score
-
-    print(json.dumps({
-        "event": "START",
-        "task_id": task_id,
-        "applicant_id": obs.applicant.applicant_id
-    }))
-
-    prompt = build_prompt(obs.applicant)
-    parsed = get_decision(prompt)
-
-    action = Action(
-        decision=parsed.get("decision", "reject"),
-        approved_amount=float(parsed.get("approved_amount", 0.0)),
-        interest_rate=float(parsed.get("interest_rate", 0.0)),
-        reason=parsed.get("reason", "")
-    )
-
-    print(json.dumps({
-        "event": "STEP",
-        "task_id": task_id,
-        "action": action.model_dump()
-    }))
-
-    obs, reward, done, info = env.step(action)
-
-    print(json.dumps({
-        "event": "END",
-        "task_id": task_id,
-        "score": reward.score,
-        "feedback": reward.feedback
-    }))
-
-    return reward.score
+    log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
+    return score
 
 
 def main():
-    scores = {}
+    all_scores = {}
     for task_id in TASKS:
-        print(f"\n{'='*40}")
-        print(f"Running {task_id}...")
-        print(f"{'='*40}")
+        print(f"\n{'='*40}", flush=True)
+        print(f"Running {task_id}...", flush=True)
+        print(f"{'='*40}", flush=True)
         score = run_task(task_id)
-        scores[task_id] = score
+        all_scores[task_id] = score
 
-    print(f"\n{'='*40}")
-    print(json.dumps({
-        "event": "SUMMARY",
-        "scores": scores,
-        "average": round(sum(scores.values()) / len(scores), 4)
-    }))
+    print(f"\n{'='*40}", flush=True)
+    print(f"FINAL SCORES: {all_scores}", flush=True)
+    print(f"AVERAGE: {sum(all_scores.values())/len(all_scores):.3f}", flush=True)
 
 
 if __name__ == "__main__":
