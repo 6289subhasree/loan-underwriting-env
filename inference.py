@@ -7,12 +7,12 @@ from environment import LoanUnderwritingEnv, Action
 
 load_dotenv()
 
-API_KEY = os.getenv("OPENAI_API_KEY") or os.getenv("HF_TOKEN")
 API_BASE_URL = os.getenv("API_BASE_URL", "https://api.groq.com/openai/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "llama-3.3-70b-versatile")
+HF_TOKEN = os.getenv("HF_TOKEN")
+API_KEY = os.getenv("OPENAI_API_KEY") or HF_TOKEN
 BENCHMARK = "loan-underwriting"
 TASKS = ["task_easy", "task_medium", "task_hard", "task_batch"]
-
 client = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
 
 
