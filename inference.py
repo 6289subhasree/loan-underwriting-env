@@ -15,6 +15,16 @@ TASKS = ["task_easy", "task_medium", "task_hard", "task_batch"]
 client = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
 
 
+# ✅ NEW: normalize score to strictly (0,1)
+def normalize_score(score: float) -> float:
+    epsilon = 1e-6
+    if score <= 0:
+        return epsilon
+    if score >= 1:
+        return 1 - epsilon
+    return score
+
+
 def log_start(task: str, env: str, model: str):
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
@@ -115,14 +125,14 @@ def run_task(task_id: str) -> float:
                 step_num += 1
                 steps_taken = step_num
 
-                step_reward = reward.score if done else 0.0
+                step_reward = normalize_score(reward.score) if done else 0.0
                 rewards.append(step_reward)
 
                 action_str = f"{action.decision}(amount={action.approved_amount:.0f},rate={action.interest_rate})"
                 log_step(step=step_num, action=action_str, reward=step_reward, done=done)
 
                 if done:
-                    final_score = reward.score
+                    final_score = normalize_score(reward.score)
                     score = final_score
 
             success = score >= 0.5
@@ -139,7 +149,7 @@ def run_task(task_id: str) -> float:
 
             obs, reward, done, info = env.step(action)
             steps_taken = 1
-            score = reward.score
+            score = normalize_score(reward.score)
             rewards.append(score)
             success = score >= 0.5
 
@@ -150,8 +160,8 @@ def run_task(task_id: str) -> float:
         print(f"ERROR: {e}", flush=True)
         import traceback
         traceback.print_exc()
-        log_end(success=False, steps=steps_taken, score=0.0, rewards=rewards)
-        return 0.0
+        log_end(success=False, steps=steps_taken, score=1e-6, rewards=rewards)
+        return 1e-6
 
     log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
     return score
