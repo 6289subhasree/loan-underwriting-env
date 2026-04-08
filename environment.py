@@ -195,7 +195,7 @@ class LoanUnderwritingEnv:
         else:
             feedback.append(f"Risky approvals detected: {risky_approvals}")
 
-        return Reward(score=min(score, 1.0), feedback=" | ".join(feedback))
+        return Reward(score=min(max(score, 0.01), 0.99), feedback=" | ".join(feedback))
 
     def _grade(self, action: Action) -> Reward:
         score = 0.0
@@ -204,7 +204,7 @@ class LoanUnderwritingEnv:
         difficulty = self.current_task.replace("task_", "")
 
         if applicant.loan_purpose in ["crypto", "gambling_debt"] and action.decision == "approve":
-            return Reward(score=0.0, feedback="Penalized: approved predatory loan purpose.")
+            return Reward(score=0.01, feedback="Penalized: approved predatory loan purpose.")
 
         if difficulty == "easy":
             if action.decision == "approve":
@@ -258,4 +258,4 @@ class LoanUnderwritingEnv:
                 score += 0.2
                 feedback.append("Appropriate handling of hard case.")
 
-        return Reward(score=min(score, 1.0), feedback=" | ".join(feedback))
+        return Reward(score=min(max(score, 0.01), 0.99), feedback=" | ".join(feedback))
