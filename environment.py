@@ -198,7 +198,7 @@ class LoanUnderwritingEnv:
         return Reward(score=min(max(score, 0.01), 0.99), feedback=" | ".join(feedback))
 
     def _grade(self, action: Action) -> Reward:
-        score = 0.0
+        score = 0.01
         feedback = []
         applicant = self.current_applicant
         difficulty = self.current_task.replace("task_", "")

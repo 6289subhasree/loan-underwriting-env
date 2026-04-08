@@ -23,7 +23,7 @@ def normalize_score(score: float) -> float:
         return epsilon
     if score >= 1:
         return 1 - epsilon
-    return score
+    return normalize_score(score)
 
 
 def log_start(task: str, env: str, model: str):
@@ -174,8 +174,8 @@ def run_task(task_id: str) -> float:
         log_end(success=False, steps=steps_taken, score=1e-6, rewards=rewards)
         return 1e-6
 
-    log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
-    return score
+    log_end(success=success, steps=steps_taken, score=normalize_score(score), rewards=rewards)
+    return normalize_score(score)
 
 
 def main():
