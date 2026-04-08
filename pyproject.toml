@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
-server = "main:app"
+server = "main:main"
 
 [project.urls]
 Homepage = "https://huggingface.co/spaces/subhasreeee/loan-underwriting-env"
