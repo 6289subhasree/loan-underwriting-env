@@ -61,17 +61,17 @@ Loan underwriting is a $100B+ problem. Banks and fintechs use ML models to evalu
 - Penalized for approving predatory loan purposes (crypto, gambling)
 - Penalized for exceeding capital pool in batch task
 - Bonus for good reasoning on hard cases
-- Score range: 0.0 – 1.0
+- Score range: 0.01 – 0.99
 
 ## Baseline Scores
 
 | Task | Score |
 |------|-------|
-| task_easy | 1.0 |
-| task_medium | 1.0 |
-| task_hard | 1.0 |
-| task_batch | 1.0 |
-| **Average** | **1.0** |
+| task_easy | 0.99 |
+| task_medium | 0.99 |
+| task_hard | 0.99 |
+| task_batch | 0.99 |
+| **Average** | **0.99** |
 
 ## Setup
 ```bash
