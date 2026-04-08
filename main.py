@@ -9,35 +9,46 @@ load_dotenv()
 app = FastAPI(title="Loan Underwriting Environment")
 env = LoanUnderwritingEnv()
 
+# Serve static UI
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
 
 @app.get("/ui")
 def ui():
     return FileResponse("static/index.html")
 
+
 @app.get("/")
 def root():
     return FileResponse("static/index.html")
 
+
+# Reset environment
 @app.post("/reset")
 def reset(task_id: str = "task_easy"):
     obs = env.reset(task_id=task_id)
-    return obs
+    return obs.model_dump()  # ✅ SAFE serialization
 
+
+# Take a step
 @app.post("/step")
 def step(action: Action):
     obs, reward, done, info = env.step(action)
     return {
-        "observation": obs,
-        "reward": reward,
+        "observation": obs.model_dump(),   # ✅ SAFE
+        "reward": reward.model_dump(),     # ✅ SAFE
         "done": done,
         "info": info
     }
 
+
+# Get current state
 @app.get("/state")
 def state():
     return env.state()
 
+
+# List tasks
 @app.get("/tasks")
 def tasks():
     return {

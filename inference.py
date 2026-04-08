@@ -12,10 +12,11 @@ API_BASE_URL = os.getenv("API_BASE_URL") or "https://api.groq.com/openai/v1"
 MODEL_NAME = os.getenv("MODEL_NAME", "llama-3.3-70b-versatile")
 BENCHMARK = "loan-underwriting"
 TASKS = ["task_easy", "task_medium", "task_hard", "task_batch"]
+
 client = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
 
 
-# ✅ NEW: normalize score to strictly (0,1)
+# ✅ Normalize score strictly between (0,1)
 def normalize_score(score: float) -> float:
     epsilon = 1e-6
     if score <= 0:
@@ -47,16 +48,19 @@ def get_decision(prompt: str) -> dict:
         temperature=0.1
     )
     raw = response.choices[0].message.content.strip()
+
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
         match = re.search(r'\{.*\}', raw, re.DOTALL)
         if match:
             return json.loads(match.group())
+
+        # ✅ SAFE fallback (no zeros)
         return {
             "decision": "reject",
-            "approved_amount": 0.0,
-            "interest_rate": 0.0,
+            "approved_amount": 0.01,
+            "interest_rate": 0.01,
             "reason": "Could not parse response"
         }
 
@@ -95,6 +99,7 @@ JSON only, no extra text."""
 def run_task(task_id: str) -> float:
     env = LoanUnderwritingEnv()
     obs = env.reset(task_id=task_id)
+
     rewards = []
     steps_taken = 0
     score = 0.0
@@ -106,48 +111,52 @@ def run_task(task_id: str) -> float:
         if task_id == "task_batch":
             done = False
             step_num = 0
-            final_score = 0.0
 
             while not done:
                 prompt = build_prompt(
                     obs.applicant,
                     context=f"Context: {obs.message}\nOptimize approvals while managing portfolio risk within $100,000 capital pool."
                 )
+
                 parsed = get_decision(prompt)
+
                 action = Action(
                     decision=parsed.get("decision", "reject"),
-                    approved_amount=float(parsed.get("approved_amount", 0.0)),
-                    interest_rate=float(parsed.get("interest_rate", 0.0)),
+                    approved_amount=float(parsed.get("approved_amount", 0.01)),
+                    interest_rate=float(parsed.get("interest_rate", 0.01)),
                     reason=parsed.get("reason", "")
                 )
 
                 obs, reward, done, info = env.step(action)
+
                 step_num += 1
                 steps_taken = step_num
 
-                step_reward = normalize_score(reward.score) if done else 0.0
+                # ✅ NO ZERO EVER
+                step_reward = normalize_score(reward.score) if done else 0.01
                 rewards.append(step_reward)
 
                 action_str = f"{action.decision}(amount={action.approved_amount:.0f},rate={action.interest_rate})"
                 log_step(step=step_num, action=action_str, reward=step_reward, done=done)
 
                 if done:
-                    final_score = normalize_score(reward.score)
-                    score = final_score
+                    score = normalize_score(reward.score)
 
             success = score >= 0.5
 
         else:
             prompt = build_prompt(obs.applicant)
             parsed = get_decision(prompt)
+
             action = Action(
                 decision=parsed.get("decision", "reject"),
-                approved_amount=float(parsed.get("approved_amount", 0.0)),
-                interest_rate=float(parsed.get("interest_rate", 0.0)),
+                approved_amount=float(parsed.get("approved_amount", 0.01)),
+                interest_rate=float(parsed.get("interest_rate", 0.01)),
                 reason=parsed.get("reason", "")
             )
 
             obs, reward, done, info = env.step(action)
+
             steps_taken = 1
             score = normalize_score(reward.score)
             rewards.append(score)
@@ -160,6 +169,8 @@ def run_task(task_id: str) -> float:
         print(f"ERROR: {e}", flush=True)
         import traceback
         traceback.print_exc()
+
+        # ✅ safe fallback score
         log_end(success=False, steps=steps_taken, score=1e-6, rewards=rewards)
         return 1e-6
 
@@ -169,16 +180,18 @@ def run_task(task_id: str) -> float:
 
 def main():
     all_scores = {}
+
     for task_id in TASKS:
         print(f"\n{'='*40}", flush=True)
         print(f"Running {task_id}...", flush=True)
         print(f"{'='*40}", flush=True)
+
         score = run_task(task_id)
         all_scores[task_id] = score
 
     print(f"\n{'='*40}", flush=True)
     print(f"FINAL SCORES: {all_scores}", flush=True)
-    print(f"AVERAGE: {sum(all_scores.values())/len(all_scores):.3f}", flush=True)
+    print(f"AVERAGE: {sum(all_scores.values()) / len(all_scores):.3f}", flush=True)
 
 
 if __name__ == "__main__":

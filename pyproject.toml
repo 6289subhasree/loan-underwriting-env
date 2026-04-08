@@ -3,17 +3,17 @@ name = "loan-underwriting-env"
 version = "1.0.0"
 description = "RL environment for AI loan underwriting agents"
 requires-python = ">=3.10"
+
 dependencies = [
     "fastapi",
     "uvicorn",
     "pydantic",
-    "openai",
-    "python-dotenv",
-    "openenv-core>=0.2.0",
+    "openai>=1.0.0",
+    "python-dotenv"
 ]
 
 [project.scripts]
-server = "server.app:main"
+server = "main:app"
 
 [project.urls]
 Homepage = "https://huggingface.co/spaces/subhasreeee/loan-underwriting-env"
