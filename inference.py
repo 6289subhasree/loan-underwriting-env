@@ -16,14 +16,17 @@ TASKS = ["task_easy", "task_medium", "task_hard", "task_batch"]
 client = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
 
 
-# ✅ Normalize score strictly between (0,1)
+MIN_SCORE = 0.001
+MAX_SCORE = 0.999
+
+
+# Normalize score strictly between (0,1)
 def normalize_score(score: float) -> float:
-    epsilon = 1e-6
     if score <= 0:
-        return epsilon
+        return MIN_SCORE
     if score >= 1:
-        return 1 - epsilon
-    return normalize_score(score)
+        return MAX_SCORE
+    return score
 
 
 def log_start(task: str, env: str, model: str):
@@ -38,7 +41,7 @@ def log_step(step: int, action: str, reward: float, done: bool, error=None):
 
 def log_end(success: bool, steps: int, score: float, rewards: list):
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-    print(f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}", flush=True)
+    print(f"[END] success={str(success).lower()} steps={steps} score={score:.6f} rewards={rewards_str}", flush=True)
 
 
 def get_decision(prompt: str) -> dict:
@@ -170,9 +173,10 @@ def run_task(task_id: str) -> float:
         import traceback
         traceback.print_exc()
 
-        # ✅ safe fallback score
-        log_end(success=False, steps=steps_taken, score=1e-6, rewards=rewards)
-        return 1e-6
+        # safe fallback score, still strictly within (0,1)
+        fallback_score = MIN_SCORE
+        log_end(success=False, steps=steps_taken, score=fallback_score, rewards=rewards)
+        return fallback_score
 
     log_end(success=success, steps=steps_taken, score=normalize_score(score), rewards=rewards)
     return normalize_score(score)
