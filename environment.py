@@ -56,7 +56,6 @@ class LoanUnderwritingEnv:
         if decision not in allowed_decisions:
             issues.append(f"invalid decision '{decision}', defaulted to reject")
             decision = "reject"
-
         if not math.isfinite(approved_amount):
             issues.append("approved_amount is non-finite, defaulted to 0")
             approved_amount = 0.0

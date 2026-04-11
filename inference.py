@@ -19,15 +19,17 @@ if not HF_TOKEN:
 
 client = OpenAI(api_key=HF_TOKEN, base_url=API_BASE_URL)
 
-
 MIN_SCORE = 0.01
 MAX_SCORE = 0.99
 
 
-# Normalize score strictly between (0,1)
+client = OpenAI(api_key=HF_TOKEN, base_url=API_BASE_URL)
+
+
 def normalize_score(score: float) -> float:
     if not isinstance(score, (int, float)) or not math.isfinite(score):
         return MIN_SCORE
+
     if score <= 0:
         return MIN_SCORE
     if score >= 1:
@@ -42,7 +44,10 @@ def log_start(task: str, env: str, model: str):
 def log_step(step: int, action: str, reward: float, done: bool, error=None):
     error_val = error if error else "null"
     done_val = str(done).lower()
-    print(f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}", flush=True)
+    print(
+        f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}",
+        flush=True
+    )
 
 
 def log_end(success: bool, steps: int, rewards: list):
@@ -61,11 +66,10 @@ def get_decision(prompt: str) -> dict:
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
-        match = re.search(r'\{.*\}', raw, re.DOTALL)
+        match = re.search(r"\{.*\}", raw, re.DOTALL)
         if match:
             return json.loads(match.group())
 
-        # ✅ SAFE fallback (no zeros)
         return {
             "decision": "reject",
             "approved_amount": 0.01,
@@ -125,7 +129,10 @@ def run_task(task_id: str) -> float:
             while not done:
                 prompt = build_prompt(
                     obs.applicant,
-                    context=f"Context: {obs.message}\nOptimize approvals while managing portfolio risk within $100,000 capital pool."
+                    context=(
+                        f"Context: {obs.message}\n"
+                        "Optimize approvals while managing portfolio risk within $100,000 capital pool."
+                    ),
                 )
 
                 parsed = get_decision(prompt)
@@ -134,7 +141,7 @@ def run_task(task_id: str) -> float:
                     decision=parsed.get("decision", "reject"),
                     approved_amount=float(parsed.get("approved_amount", 0.01)),
                     interest_rate=float(parsed.get("interest_rate", 0.01)),
-                    reason=parsed.get("reason", "")
+                    reason=parsed.get("reason", ""),
                 )
 
                 obs, reward, done, info = env.step(action)
@@ -162,7 +169,7 @@ def run_task(task_id: str) -> float:
                 decision=parsed.get("decision", "reject"),
                 approved_amount=float(parsed.get("approved_amount", 0.01)),
                 interest_rate=float(parsed.get("interest_rate", 0.01)),
-                reason=parsed.get("reason", "")
+                reason=parsed.get("reason", ""),
             )
 
             obs, reward, done, info = env.step(action)
