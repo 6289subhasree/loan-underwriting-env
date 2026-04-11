@@ -20,7 +20,7 @@ if not HF_TOKEN:
 client = OpenAI(api_key=HF_TOKEN, base_url=API_BASE_URL)
 
 MIN_SCORE = 0.01
-MAX_SCORE = 0.99
+MAX_SCORE = 0.98
 
 
 def normalize_score(score: float) -> float:
@@ -38,17 +38,22 @@ def log_start(task: str, env: str, model: str):
 
 def log_step(step: int, action: str, reward: float, done: bool, error=None):
     error_val = error if error else "null"
-    done_val = str(done).lower()
+    status_val = "terminal" if done else "intermediate"
     safe_reward = normalize_score(reward)
     print(
-        f"[STEP] step={step} action={action} reward={safe_reward:.2f} done={done_val} error={error_val}",
+        f"[STEP] step={step} action={action} reward={safe_reward:.2f} status={status_val} error={error_val}",
         flush=True
     )
 
 
-def log_end(success: bool, steps: int, rewards: list):
+def log_end(success: bool, steps: int, rewards: list, score: float):
     rewards_str = ",".join(f"{normalize_score(r):.2f}" for r in rewards)
-    print(f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}", flush=True)
+    outcome = "pass" if success else "fail"
+    safe_score = normalize_score(score)
+    print(
+        f"[END] outcome={outcome} steps={steps} score={safe_score:.2f} rewards={rewards_str}",
+        flush=True
+    )
 
 
 def get_decision(prompt: str) -> dict:
@@ -196,7 +201,7 @@ def run_task(task_id: str) -> float:
             steps_taken = 1
     finally:
         env.close()
-        log_end(success=success, steps=steps_taken, rewards=rewards)
+        log_end(success=success, steps=steps_taken, rewards=rewards, score=score)
 
     return normalize_score(score)
 
