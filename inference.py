@@ -23,18 +23,13 @@ MIN_SCORE = 0.01
 MAX_SCORE = 0.99
 
 
-client = OpenAI(api_key=HF_TOKEN, base_url=API_BASE_URL)
-
-
 def normalize_score(score: float) -> float:
     if not isinstance(score, (int, float)) or not math.isfinite(score):
         return MIN_SCORE
 
-    if score <= 0:
-        return MIN_SCORE
-    if score >= 1:
-        return MAX_SCORE
-    return score
+    bounded = max(MIN_SCORE, min(MAX_SCORE, float(score)))
+    # Ensure 2-decimal logging can never round to 0.00 or 1.00.
+    return max(MIN_SCORE, min(MAX_SCORE, round(bounded, 2)))
 
 
 def log_start(task: str, env: str, model: str):
@@ -44,14 +39,15 @@ def log_start(task: str, env: str, model: str):
 def log_step(step: int, action: str, reward: float, done: bool, error=None):
     error_val = error if error else "null"
     done_val = str(done).lower()
+    safe_reward = normalize_score(reward)
     print(
-        f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}",
+        f"[STEP] step={step} action={action} reward={safe_reward:.2f} done={done_val} error={error_val}",
         flush=True
     )
 
 
 def log_end(success: bool, steps: int, rewards: list):
-    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
+    rewards_str = ",".join(f"{normalize_score(r):.2f}" for r in rewards)
     print(f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}", flush=True)
 
 
