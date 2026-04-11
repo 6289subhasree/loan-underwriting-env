@@ -40,6 +40,38 @@ class LoanUnderwritingEnv:
         self.capital_pool = 0.0
         self.batch_actions = []
 
+    def close(self):
+        """No-op close for compatibility with evaluator lifecycle hooks."""
+        return None
+
+    def _sanitize_action(self, action: Action) -> tuple[Action, str | None]:
+        issues = []
+        decision = action.decision
+        approved_amount = float(action.approved_amount)
+        interest_rate = float(action.interest_rate)
+        reason = action.reason or ""
+
+        allowed_decisions = {"approve", "reject", "counter_offer"}
+        if decision not in allowed_decisions:
+            issues.append(f"invalid decision '{decision}', defaulted to reject")
+            decision = "reject"
+
+        if approved_amount < 0:
+            issues.append("approved_amount < 0, clamped to 0")
+            approved_amount = 0.0
+
+        if interest_rate < 0:
+            issues.append("interest_rate < 0, clamped to 0")
+            interest_rate = 0.0
+
+        sanitized = Action(
+            decision=decision,
+            approved_amount=approved_amount,
+            interest_rate=interest_rate,
+            reason=reason
+        )
+        return sanitized, ("; ".join(issues) if issues else None)
+
     def _generate_applicant(self, difficulty: str) -> Applicant:
         if difficulty == "easy":
             return Applicant(
@@ -108,6 +140,7 @@ class LoanUnderwritingEnv:
 
     def step(self, action: Action) -> tuple:
         self.steps += 1
+        action, last_action_error = self._sanitize_action(action)
 
         if self.current_task == "task_batch":
             self.batch_actions.append(action)
@@ -121,7 +154,7 @@ class LoanUnderwritingEnv:
                     difficulty="hard",
                     message=f"Applicant {self.batch_index + 1} of 3. Capital remaining: ${self.capital_pool:,.2f}"
                 )
-                return obs, Reward(score=0.01, feedback="Intermediate step"), False, {"steps": self.steps}
+                return obs, Reward(score=0.01, feedback="Intermediate step"), False, {"steps": self.steps, "last_action_error": last_action_error}
             else:
                 reward = self._grade_batch()
                 self.done = True
@@ -131,7 +164,7 @@ class LoanUnderwritingEnv:
                     difficulty="hard",
                     message="Batch evaluation complete."
                 )
-                return obs, reward, self.done, {"steps": self.steps}
+                return obs, reward, self.done, {"steps": self.steps, "last_action_error": last_action_error}
 
         reward = self._grade(action)
         self.done = True
@@ -141,7 +174,7 @@ class LoanUnderwritingEnv:
             difficulty=self.current_task.replace("task_", ""),
             message=f"Decision made: {action.decision}"
         )
-        return obs, reward, self.done, {"steps": self.steps}
+        return obs, reward, self.done, {"steps": self.steps, "last_action_error": last_action_error}
 
     def state(self) -> dict:
         return {
