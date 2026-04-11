@@ -23,18 +23,13 @@ MIN_SCORE = 0.01
 MAX_SCORE = 0.99
 
 
-client = OpenAI(api_key=HF_TOKEN, base_url=API_BASE_URL)
-
-
 def normalize_score(score: float) -> float:
     if not isinstance(score, (int, float)) or not math.isfinite(score):
         return MIN_SCORE
 
-    if score <= 0:
-        return MIN_SCORE
-    if score >= 1:
-        return MAX_SCORE
-    return score
+    bounded = max(MIN_SCORE, min(MAX_SCORE, float(score)))
+    # Ensure 2-decimal logging can never round to 0.00 or 1.00.
+    return max(MIN_SCORE, min(MAX_SCORE, round(bounded, 2)))
 
 
 def log_start(task: str, env: str, model: str):
