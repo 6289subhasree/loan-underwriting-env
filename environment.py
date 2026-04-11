@@ -1,4 +1,5 @@
 import random
+import math
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -55,6 +56,13 @@ class LoanUnderwritingEnv:
         if decision not in allowed_decisions:
             issues.append(f"invalid decision '{decision}', defaulted to reject")
             decision = "reject"
+        if not math.isfinite(approved_amount):
+            issues.append("approved_amount is non-finite, defaulted to 0")
+            approved_amount = 0.0
+
+        if not math.isfinite(interest_rate):
+            issues.append("interest_rate is non-finite, defaulted to 0")
+            interest_rate = 0.0
 
         if approved_amount < 0:
             issues.append("approved_amount < 0, clamped to 0")

@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import math
 from openai import OpenAI
 from dotenv import load_dotenv
 from environment import LoanUnderwritingEnv, Action
@@ -22,7 +23,13 @@ MIN_SCORE = 0.01
 MAX_SCORE = 0.99
 
 
+client = OpenAI(api_key=HF_TOKEN, base_url=API_BASE_URL)
+
+
 def normalize_score(score: float) -> float:
+    if not isinstance(score, (int, float)) or not math.isfinite(score):
+        return MIN_SCORE
+
     if score <= 0:
         return MIN_SCORE
     if score >= 1:
@@ -110,6 +117,7 @@ def run_task(task_id: str) -> float:
     steps_taken = 0
     score = MIN_SCORE
     success = False
+    terminal_error = None
 
     log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
 
