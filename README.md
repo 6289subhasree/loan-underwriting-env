@@ -94,7 +94,6 @@ python inference.py
 | GET | `/tasks` | List all tasks |
 
 ## Environment Variables
-OPENAI_API_KEY=your_groq_or_openai_key
 API_BASE_URL=https://api.groq.com/openai/v1
 MODEL_NAME=llama-3.3-70b-versatile
 HF_TOKEN=your_huggingface_token
