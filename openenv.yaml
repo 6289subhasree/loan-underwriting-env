@@ -47,13 +47,13 @@ action_space:
     - reason: string
 
 reward:
-  range: [0.01, 0.99]
+  range: [0.01, 0.98]
   type: continuous
   description: "Partial credit scoring based on decision correctness, interest rate appropriateness, reasoning quality, capital management, and predatory lending penalties."
 
 baseline_scores:
-  task_easy: 0.99
-  task_medium: 0.99
-  task_hard: 0.99
-  task_batch: 0.99
-  average: 0.99
+  task_easy: 0.75
+  task_medium: 0.65
+  task_hard: 0.60
+  task_batch: 0.70
+  average: 0.68
