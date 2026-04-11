@@ -1,29 +1,38 @@
 import os
 import json
 import re
+import math
 from openai import OpenAI
 from dotenv import load_dotenv
 from environment import LoanUnderwritingEnv, Action
 
 load_dotenv()
 
-API_KEY = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
 API_BASE_URL = os.getenv("API_BASE_URL") or "https://api.groq.com/openai/v1"
 MODEL_NAME = os.getenv("MODEL_NAME", "llama-3.3-70b-versatile")
+HF_TOKEN = os.getenv("HF_TOKEN")
 BENCHMARK = "loan-underwriting"
 TASKS = ["task_easy", "task_medium", "task_hard", "task_batch"]
 
-client = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
+if not HF_TOKEN:
+    raise ValueError("HF_TOKEN environment variable is required")
+
+client = OpenAI(api_key=HF_TOKEN, base_url=API_BASE_URL)
 
 
-# ✅ Normalize score strictly between (0,1)
+MIN_SCORE = 0.01
+MAX_SCORE = 0.99
+
+
+# Normalize score strictly between (0,1)
 def normalize_score(score: float) -> float:
-    epsilon = 1e-6
+    if not isinstance(score, (int, float)) or not math.isfinite(score):
+        return MIN_SCORE
     if score <= 0:
-        return epsilon
+        return MIN_SCORE
     if score >= 1:
-        return 1 - epsilon
-    return normalize_score(score)
+        return MAX_SCORE
+    return score
 
 
 def log_start(task: str, env: str, model: str):
@@ -36,9 +45,9 @@ def log_step(step: int, action: str, reward: float, done: bool, error=None):
     print(f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}", flush=True)
 
 
-def log_end(success: bool, steps: int, score: float, rewards: list):
+def log_end(success: bool, steps: int, rewards: list):
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-    print(f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}", flush=True)
+    print(f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}", flush=True)
 
 
 def get_decision(prompt: str) -> dict:
@@ -102,8 +111,9 @@ def run_task(task_id: str) -> float:
 
     rewards = []
     steps_taken = 0
-    score = 0.0
+    score = MIN_SCORE
     success = False
+    terminal_error = None
 
     log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
 
@@ -128,16 +138,16 @@ def run_task(task_id: str) -> float:
                 )
 
                 obs, reward, done, info = env.step(action)
+                last_action_error = info.get("last_action_error")
 
                 step_num += 1
                 steps_taken = step_num
 
-                # ✅ NO ZERO EVER
                 step_reward = normalize_score(reward.score) if done else 0.01
                 rewards.append(step_reward)
 
                 action_str = f"{action.decision}(amount={action.approved_amount:.0f},rate={action.interest_rate})"
-                log_step(step=step_num, action=action_str, reward=step_reward, done=done)
+                log_step(step=step_num, action=action_str, reward=step_reward, done=done, error=last_action_error)
 
                 if done:
                     score = normalize_score(reward.score)
@@ -156,6 +166,7 @@ def run_task(task_id: str) -> float:
             )
 
             obs, reward, done, info = env.step(action)
+            last_action_error = info.get("last_action_error")
 
             steps_taken = 1
             score = normalize_score(reward.score)
@@ -163,35 +174,33 @@ def run_task(task_id: str) -> float:
             success = score >= 0.5
 
             action_str = f"{action.decision}(amount={action.approved_amount:.0f},rate={action.interest_rate})"
-            log_step(step=1, action=action_str, reward=score, done=done)
+            log_step(step=1, action=action_str, reward=score, done=done, error=last_action_error)
 
     except Exception as e:
-        print(f"ERROR: {e}", flush=True)
-        import traceback
-        traceback.print_exc()
+        terminal_error = str(e)
+        score = MIN_SCORE
+        success = False
+        if not rewards:
+            rewards.append(MIN_SCORE)
+        if steps_taken == 0:
+            log_step(
+                step=1,
+                action="error()",
+                reward=MIN_SCORE,
+                done=True,
+                error=terminal_error
+            )
+            steps_taken = 1
+    finally:
+        env.close()
+        log_end(success=success, steps=steps_taken, rewards=rewards)
 
-        # ✅ safe fallback score
-        log_end(success=False, steps=steps_taken, score=1e-6, rewards=rewards)
-        return 1e-6
-
-    log_end(success=success, steps=steps_taken, score=normalize_score(score), rewards=rewards)
     return normalize_score(score)
 
 
 def main():
-    all_scores = {}
-
     for task_id in TASKS:
-        print(f"\n{'='*40}", flush=True)
-        print(f"Running {task_id}...", flush=True)
-        print(f"{'='*40}", flush=True)
-
-        score = run_task(task_id)
-        all_scores[task_id] = score
-
-    print(f"\n{'='*40}", flush=True)
-    print(f"FINAL SCORES: {all_scores}", flush=True)
-    print(f"AVERAGE: {sum(all_scores.values()) / len(all_scores):.3f}", flush=True)
+        run_task(task_id)
 
 
 if __name__ == "__main__":
