@@ -44,7 +44,7 @@ def log_step(step: int, action: str, reward: float, done: bool, error=None):
 
 def log_end(success: bool, steps: int, rewards: list):
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-    print(f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}", flush=True)
+print(f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}", flush=True)
 
 
 def get_decision(prompt: str) -> dict:
@@ -174,17 +174,17 @@ def run_task(task_id: str) -> float:
             log_step(step=1, action=action_str, reward=score, done=done, error=last_action_error)
 
     except Exception as e:
-        terminal_error = str(e)
-        score = MIN_SCORE
-        success = False
-        if not rewards:
-            rewards.append(MIN_SCORE)
-        if steps_taken == 0:
-            log_step(step=1, action="error()", reward=MIN_SCORE, done=True, error=terminal_error)
-            steps_taken = 1
-    finally:
-        env.close()
-        log_end(success=success, steps=steps_taken, rewards=rewards)
+terminal_error = str(e)
+score = MIN_SCORE
+success = False
+if not rewards:
+    rewards.append(MIN_SCORE)
+if steps_taken == 0:
+    log_step(step=1, action="error()", reward=MIN_SCORE, done=True, error=terminal_error)
+    steps_taken = 1
+finally:
+    env.close()
+    log_end(success=success, steps=steps_taken, rewards=rewards)
 
     return normalize_score(score)
 
