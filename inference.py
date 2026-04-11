@@ -45,6 +45,7 @@ def log_step(step: int, action: str, reward: float, done: bool, error=None):
 def log_end(success: bool, steps: int, rewards: list):
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
     print(f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}", flush=True)
+ main
 
 
 def get_decision(prompt: str) -> dict:
@@ -174,7 +175,7 @@ def run_task(task_id: str) -> float:
             log_step(step=1, action=action_str, reward=score, done=done, error=last_action_error)
 
     except Exception as e:
-        terminal_error = str(e)
+ terminal_error = str(e)
         score = MIN_SCORE
         success = False
         if not rewards:
