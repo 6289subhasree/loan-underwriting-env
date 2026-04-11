@@ -26,8 +26,10 @@ def root():
 # Reset environment
 @app.post("/reset")
 def reset(task_id: str = "task_easy"):
+    global env
+    env = LoanUnderwritingEnv()  # fresh instance every reset — prevents state bleed between tasks
     obs = env.reset(task_id=task_id)
-    return obs.model_dump()  # ✅ SAFE serialization
+    return obs.model_dump()
 
 
 # Take a step
@@ -35,8 +37,8 @@ def reset(task_id: str = "task_easy"):
 def step(action: Action):
     obs, reward, done, info = env.step(action)
     return {
-        "observation": obs.model_dump(),   # ✅ SAFE
-        "reward": reward.model_dump(),     # ✅ SAFE
+        "observation": obs.model_dump(),
+        "reward": reward.model_dump(),
         "done": done,
         "info": info
     }
@@ -79,6 +81,8 @@ def tasks():
             }
         ]
     }
+
+
 def main():
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=7860)
