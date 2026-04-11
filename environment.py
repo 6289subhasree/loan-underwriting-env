@@ -168,9 +168,10 @@ class LoanUnderwritingEnv:
                     difficulty="hard",
                     message=f"Applicant {self.batch_index + 1} of 3. Capital remaining: ${self.capital_pool:,.2f}"
                 )
-                return obs, Reward(score=0.01, feedback="Intermediate step"), False, {"steps": self.steps, "last_action_error": last_action_error}
+                return obs, Reward(score=self._clamp_score(0.01), feedback="Intermediate step"), False, {"steps": self.steps, "last_action_error": last_action_error}
             else:
                 reward = self._grade_batch()
+                reward = Reward(score=self._clamp_score(reward.score), feedback=reward.feedback)
                 self.done = True
                 obs = Observation(
                     applicant=self.current_applicant,
@@ -181,6 +182,7 @@ class LoanUnderwritingEnv:
                 return obs, reward, self.done, {"steps": self.steps, "last_action_error": last_action_error}
 
         reward = self._grade(action)
+        reward = Reward(score=self._clamp_score(reward.score), feedback=reward.feedback)
         self.done = True
         obs = Observation(
             applicant=self.current_applicant,
