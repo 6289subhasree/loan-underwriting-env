@@ -45,6 +45,12 @@ class LoanUnderwritingEnv:
         """No-op close for compatibility with evaluator lifecycle hooks."""
         return None
 
+    @staticmethod
+    def _clamp_score(score: float) -> float:
+        bounded = max(0.01, min(0.99, float(score)))
+        # Keep compatibility with validators that parse 2-decimal values.
+        return max(0.01, min(0.99, round(bounded, 2)))
+
     def _sanitize_action(self, action: Action) -> tuple[Action, str | None]:
         issues = []
         decision = action.decision
@@ -236,7 +242,7 @@ class LoanUnderwritingEnv:
         else:
             feedback.append(f"Risky approvals detected: {risky_approvals}")
 
-        return Reward(score=min(max(score, 0.01), 0.99), feedback=" | ".join(feedback))
+        return Reward(score=self._clamp_score(score), feedback=" | ".join(feedback))
 
     def _grade(self, action: Action) -> Reward:
         score = 0.01
@@ -299,4 +305,4 @@ class LoanUnderwritingEnv:
                 score += 0.2
                 feedback.append("Appropriate handling of hard case.")
 
-        return Reward(score=min(max(score, 0.01), 0.99), feedback=" | ".join(feedback))
+        return Reward(score=self._clamp_score(score), feedback=" | ".join(feedback))
