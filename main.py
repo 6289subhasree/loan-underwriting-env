@@ -59,25 +59,25 @@ def tasks():
                 "task_id": "task_easy",
                 "difficulty": "easy",
                 "description": "Clear-cut applicant with strong financials. Approve with appropriate rate.",
-                "scoring": "approve + interest 5-8% + amount within requested (max 0.99)"
+                "scoring": "approve + interest 5-8% + amount within requested (max 0.98)"
             },
             {
                 "task_id": "task_medium",
                 "difficulty": "medium",
                 "description": "Borderline applicant with mixed signals. Weigh risk carefully.",
-                "scoring": "counter_offer + interest 8-14% + reduced amount (max 0.99)"
+                "scoring": "counter_offer + interest 8-14% + reduced amount (max 0.98)"
             },
             {
                 "task_id": "task_hard",
                 "difficulty": "hard",
                 "description": "High-risk applicant. Reject or counter-offer with strong reasoning.",
-                "scoring": "reject + reasoning + appropriate rate (max 0.99)"
+                "scoring": "reject + reasoning + appropriate rate (max 0.98)"
             },
             {
                 "task_id": "task_batch",
                 "difficulty": "hard",
                 "description": "Portfolio task — evaluate 3 applicants with $100k capital pool. Maximize approvals while managing risk.",
-                "scoring": "good decisions + capital management + no predatory approvals (max 0.99)"
+                "scoring": "good decisions + capital management + no predatory approvals (max 0.98)"
             }
         ]
     }

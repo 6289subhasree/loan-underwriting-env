@@ -20,7 +20,7 @@ if not HF_TOKEN:
 client = OpenAI(api_key=HF_TOKEN, base_url=API_BASE_URL)
 
 MIN_SCORE = 0.01
-MAX_SCORE = 0.99
+MAX_SCORE = 0.98
 
 
 def normalize_score(score: float) -> float:

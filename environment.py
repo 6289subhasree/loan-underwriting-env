@@ -47,9 +47,9 @@ class LoanUnderwritingEnv:
 
     @staticmethod
     def _clamp_score(score: float) -> float:
-        bounded = max(0.01, min(0.99, float(score)))
+        bounded = max(0.01, min(0.98, float(score)))
         # Keep compatibility with validators that parse 2-decimal values.
-        return max(0.01, min(0.99, round(bounded, 2)))
+        return max(0.01, min(0.98, round(bounded, 2)))
 
     def _sanitize_action(self, action: Action) -> tuple[Action, str | None]:
         issues = []
