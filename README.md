@@ -11,7 +11,7 @@ tags:
 
 # Loan Underwriting Environment
 
-An reinforcement learning environment where an AI agent acts as a loan underwriting officer. The agent evaluates real-world applicant profiles and makes financial decisions — approve, reject, or counter-offer — while managing portfolio risk and avoiding predatory lending.
+A reinforcement learning environment where an AI agent acts as a loan underwriting officer. The agent evaluates real-world applicant profiles and makes financial decisions — approve, reject, or counter-offer — while managing portfolio risk and avoiding predatory lending.
 
 Built for the Meta OpenEnv Hackathon.
 
